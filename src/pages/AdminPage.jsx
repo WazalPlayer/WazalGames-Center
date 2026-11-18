@@ -1,37 +1,25 @@
 import { useState, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
-import { auth, db, storage } from '../services/firebase';
-import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Plus, X, Pencil, Trash2, ShieldAlert, Upload, Save, ShieldCheck, ShieldOff } from 'lucide-react';
+import { auth, db } from '../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { Gamepad2, MessageSquare, Users, ShieldAlert, LayoutDashboard, LogOut, ArrowLeft } from 'lucide-react';
 import Navbar from '../components/Navbar';
-import { GENRES, genreName, platformName } from '../services/labels';
-import { errorMessage } from '../services/errors';
 import { isAdminUser } from '../services/admin';
+import GamesAdmin from './admin/GamesAdmin';
+import ReviewsAdmin from './admin/ReviewsAdmin';
+import UsersAdmin from './admin/UsersAdmin';
+import { useNavigate } from 'react-router-dom';
 
-const EMPTY = {
-  name: '',
-  description: '',
-  genre: 'Action',
-  releaseDate: '',
-  fileSize: '',
-  downloadUrl: '',
-  coverImage: '',
-  screenshots: [],
-  rating: 0,
-  downloads: 0,
-  type: 'pc',
-};
-
-const TABS = [
-  { id: 'games', label: 'Игры' },
-  { id: 'reviews', label: 'Отзывы' },
-  { id: 'users', label: 'Пользователи' },
+const SECTIONS = [
+  { id: 'games', label: 'Игры', Icon: Gamepad2, title: 'Игры', subtitle: 'Добавление, редактирование и удаление игр' },
+  { id: 'reviews', label: 'Отзывы', Icon: MessageSquare, title: 'Отзывы', subtitle: 'Модерация отзывов игроков' },
+  { id: 'users', label: 'Пользователи', Icon: Users, title: 'Пользователи', subtitle: 'Роли и доступ' },
 ];
 
 function AdminPage() {
+  const navigate = useNavigate();
   const [allowed, setAllowed] = useState(null);
-  const [tab, setTab] = useState('games');
+  const [section, setSection] = useState('games');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -47,318 +35,57 @@ function AdminPage() {
       <div className="page">
         <Navbar onLogout={() => signOut(auth)} />
         <main className="container">
-          <p className="muted"><ShieldAlert size={16} /> Доступ закрыт. Раздел только для администраторов.</p>
+          <div className="empty">
+            <ShieldAlert size={32} />
+            <p>Доступ закрыт. Раздел только для администраторов.</p>
+          </div>
         </main>
       </div>
     );
   }
 
-  return (
-    <div className="page">
-      <Navbar onLogout={() => signOut(auth)} />
-      <main className="container">
-        <h1 className="page-title">Админ-панель</h1>
+  const current = SECTIONS.find((s) => s.id === section);
 
-        <div className="tabs">
-          {TABS.map((t) => (
-            <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => { setTab(t.id); setError(''); }}>
-              {t.label}
+  const choose = (id) => {
+    setSection(id);
+    setError('');
+  };
+
+  return (
+    <div className="admin-shell">
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <LayoutDashboard size={20} />
+          <span>Админ-панель</span>
+        </div>
+        <nav className="admin-nav">
+          {SECTIONS.map(({ id, label, Icon }) => (
+            <button key={id} className={section === id ? 'active' : ''} onClick={() => choose(id)}>
+              <Icon size={17} /> {label}
             </button>
           ))}
+        </nav>
+        <div className="admin-sidebar-foot">
+          <button onClick={() => navigate('/')}><ArrowLeft size={17} /> На сайт</button>
+          <button className="danger" onClick={() => signOut(auth)}><LogOut size={17} /> Выйти</button>
         </div>
+      </aside>
+
+      <div className="admin-content">
+        <header className="admin-header">
+          <div>
+            <h1>{current.title}</h1>
+            <p className="muted">{current.subtitle}</p>
+          </div>
+        </header>
 
         {error && <div className="error">{error}</div>}
 
-        {tab === 'games' && <GamesTab setError={setError} />}
-        {tab === 'reviews' && <ReviewsTab setError={setError} />}
-        {tab === 'users' && <UsersTab setError={setError} />}
-      </main>
+        {section === 'games' && <GamesAdmin setError={setError} />}
+        {section === 'reviews' && <ReviewsAdmin setError={setError} />}
+        {section === 'users' && <UsersAdmin setError={setError} />}
+      </div>
     </div>
-  );
-}
-
-function GamesTab({ setError }) {
-  const [games, setGames] = useState([]);
-  const [form, setForm] = useState(EMPTY);
-  const [editingId, setEditingId] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const loadGames = async () => {
-    const snap = await getDocs(collection(db, 'games'));
-    setGames(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  };
-
-  useEffect(() => {
-    loadGames().catch((err) => setError(errorMessage(err)));
-  }, []);
-
-  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
-
-  const uploadFile = async (file, folder) => {
-    const fileRef = ref(storage, `games/${folder}/${Date.now()}_${file.name}`);
-    await uploadBytes(fileRef, file);
-    return getDownloadURL(fileRef);
-  };
-
-  const onCover = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setBusy(true);
-    setError('');
-    try {
-      const url = await uploadFile(file, 'covers');
-      setForm((f) => ({ ...f, coverImage: url }));
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onScreenshots = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setBusy(true);
-    setError('');
-    try {
-      const urls = await Promise.all(files.map((file) => uploadFile(file, 'screenshots')));
-      setForm((f) => ({ ...f, screenshots: [...f.screenshots, ...urls] }));
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const openNew = () => {
-    setEditingId(null);
-    setForm(EMPTY);
-    setShowForm(true);
-  };
-
-  const openEdit = (game) => {
-    setEditingId(game.id);
-    setForm({ ...EMPTY, ...game });
-    setShowForm(true);
-  };
-
-  const save = async (e) => {
-    e.preventDefault();
-    setError('');
-    const data = {
-      ...form,
-      rating: Number(form.rating) || 0,
-      downloads: Number(form.downloads) || 0,
-      updatedAt: new Date(),
-    };
-    try {
-      if (editingId) {
-        await updateDoc(doc(db, 'games', editingId), data);
-      } else {
-        await addDoc(collection(db, 'games'), { ...data, createdAt: new Date() });
-      }
-      setShowForm(false);
-      setEditingId(null);
-      loadGames();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  };
-
-  const remove = async (game) => {
-    if (!window.confirm(`Удалить игру «${game.name}»?`)) return;
-    try {
-      await deleteDoc(doc(db, 'games', game.id));
-      loadGames();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  };
-
-  return (
-    <>
-      <div className="section-head">
-        <h2 className="section-title">Игры ({games.length})</h2>
-        <button className="btn btn-primary" onClick={() => (showForm ? setShowForm(false) : openNew())}>
-          {showForm ? <><X size={16} /> Закрыть</> : <><Plus size={16} /> Добавить игру</>}
-        </button>
-      </div>
-
-      {showForm && (
-        <form className="card" onSubmit={save} style={{ marginBottom: 24 }}>
-          <h2 className="section-title" style={{ marginTop: 0 }}>{editingId ? 'Редактирование игры' : 'Новая игра'}</h2>
-
-          <div className="form-row">
-            <div className="field"><label>Название</label><input value={form.name} onChange={set('name')} required /></div>
-            <div className="field"><label>Жанр</label>
-              <select value={form.genre} onChange={set('genre')}>
-                {Object.keys(GENRES).map((key) => <option key={key} value={key}>{genreName(key)}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="field"><label>Описание</label><textarea rows={3} value={form.description} onChange={set('description')} /></div>
-
-          <div className="form-row">
-            <div className="field"><label>Дата выхода</label><input type="date" value={form.releaseDate} onChange={set('releaseDate')} /></div>
-            <div className="field"><label>Размер</label><input placeholder="например, 180 МБ" value={form.fileSize} onChange={set('fileSize')} /></div>
-          </div>
-
-          <div className="form-row">
-            <div className="field"><label>Ссылка на скачивание (https://)</label><input value={form.downloadUrl} onChange={set('downloadUrl')} /></div>
-            <div className="field"><label>Платформа</label>
-              <select value={form.type} onChange={set('type')}>
-                <option value="pc">{platformName('pc')}</option>
-                <option value="mobile">{platformName('mobile')}</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="field">
-              <label>Обложка</label>
-              <input type="file" accept="image/*" onChange={onCover} />
-              {form.coverImage && <div className="muted" style={{ marginTop: 6 }}>Обложка загружена</div>}
-            </div>
-            <div className="field">
-              <label>Скриншоты</label>
-              <input type="file" accept="image/*" multiple onChange={onScreenshots} />
-              <div className="muted" style={{ marginTop: 6 }}>Загружено: {form.screenshots.length}</div>
-            </div>
-          </div>
-
-          <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? <><Upload size={16} /> Загрузка файлов...</> : editingId ? <><Save size={16} /> Сохранить</> : <><Plus size={16} /> Создать игру</>}
-          </button>
-        </form>
-      )}
-
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Название</th><th>Жанр</th><th>Платформа</th><th>Размер</th><th></th></tr>
-          </thead>
-          <tbody>
-            {games.length === 0 && <tr><td colSpan={5} className="muted">Игр пока нет.</td></tr>}
-            {games.map((g) => (
-              <tr key={g.id}>
-                <td>{g.name}</td>
-                <td>{genreName(g.genre)}</td>
-                <td>{platformName(g.type)}</td>
-                <td>{g.fileSize || '—'}</td>
-                <td className="actions">
-                  <button className="btn btn-sm" onClick={() => openEdit(g)}><Pencil size={14} /> Изменить</button>
-                  <button className="btn btn-sm btn-danger" onClick={() => remove(g)}><Trash2 size={14} /> Удалить</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-function ReviewsTab({ setError }) {
-  const [reviews, setReviews] = useState([]);
-  const [games, setGames] = useState({});
-
-  const load = async () => {
-    const [reviewSnap, gameSnap] = await Promise.all([getDocs(collection(db, 'reviews')), getDocs(collection(db, 'games'))]);
-    setGames(Object.fromEntries(gameSnap.docs.map((d) => [d.id, d.data().name])));
-    setReviews(reviewSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  };
-
-  useEffect(() => {
-    load().catch((err) => setError(errorMessage(err)));
-  }, []);
-
-  const remove = async (review) => {
-    if (!window.confirm('Удалить отзыв?')) return;
-    try {
-      await deleteDoc(doc(db, 'reviews', review.id));
-      load();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  };
-
-  return (
-    <>
-      <h2 className="section-title">Отзывы ({reviews.length})</h2>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Игра</th><th>Автор</th><th>Оценка</th><th>Текст</th><th></th></tr>
-          </thead>
-          <tbody>
-            {reviews.length === 0 && <tr><td colSpan={5} className="muted">Отзывов пока нет.</td></tr>}
-            {reviews.map((r) => (
-              <tr key={r.id}>
-                <td>{games[r.gameId] || '—'}</td>
-                <td>{r.username}</td>
-                <td>{r.rating} / 5</td>
-                <td className="wrap-text">{r.comment}</td>
-                <td className="actions">
-                  <button className="btn btn-sm btn-danger" onClick={() => remove(r)}><Trash2 size={14} /> Удалить</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-function UsersTab({ setError }) {
-  const [users, setUsers] = useState([]);
-
-  const load = async () => {
-    const snap = await getDocs(collection(db, 'users'));
-    setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  };
-
-  useEffect(() => {
-    load().catch((err) => setError(errorMessage(err)));
-  }, []);
-
-  const toggleRole = async (u) => {
-    try {
-      await updateDoc(doc(db, 'users', u.id), { role: u.role === 'admin' ? 'user' : 'admin' });
-      load();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  };
-
-  return (
-    <>
-      <h2 className="section-title">Пользователи ({users.length})</h2>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Имя</th><th>Email</th><th>Роль</th><th></th></tr>
-          </thead>
-          <tbody>
-            {users.length === 0 && <tr><td colSpan={4} className="muted">Пользователей пока нет.</td></tr>}
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td>{u.username || '—'}</td>
-                <td>{u.email || '—'}</td>
-                <td>{u.role === 'admin' ? 'Администратор' : 'Игрок'}</td>
-                <td className="actions">
-                  <button className="btn btn-sm" onClick={() => toggleRole(u)}>
-                    {u.role === 'admin' ? <><ShieldOff size={14} /> Снять роль</> : <><ShieldCheck size={14} /> Сделать админом</>}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
   );
 }
 

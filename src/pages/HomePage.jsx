@@ -38,7 +38,15 @@ function HomePage() {
     <div className="page">
       <Navbar onLogout={() => signOut(auth)} />
       <main className="container">
-        <h1 className="page-title">Добро пожаловать, {profile?.username || 'игрок'}</h1>
+        <section className="hero">
+          <div>
+            <h1>Добро пожаловать, {profile?.username || 'игрок'}</h1>
+            <p>Скачивайте игры, оставляйте отзывы и играйте с друзьями.</p>
+          </div>
+          <button className="btn btn-primary" onClick={() => navigate('/games')}>
+            <Gamepad2 size={16} /> Открыть каталог
+          </button>
+        </section>
 
         <section className="stats">
           <div className="stat">

@@ -10,7 +10,7 @@ Live site: https://wazalgames-center.web.app
 npm install          # install dependencies
 npm run dev          # web version at http://localhost:5173
 npm run build        # production web build into dist/
-npm run dist:exe     # Windows portable build into dist-v4/WazalGamesCenter.exe
+npm run dist:exe     # Windows portable build into dist-v5/WazalGamesCenter.exe
 npm run electron-dev # desktop window against the dev server
 ```
 
