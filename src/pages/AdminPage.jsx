@@ -1,329 +1,198 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db, storage } from '../services/firebase';
 import { doc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Navbar from '../components/Navbar';
-import './AdminPage.css';
+
+const EMPTY = {
+  name: '',
+  description: '',
+  genre: 'Action',
+  releaseDate: '',
+  fileSize: '',
+  downloadUrl: '',
+  coverImage: '',
+  screenshots: [],
+  rating: 0,
+  downloads: 0,
+  type: 'pc',
+};
 
 function AdminPage() {
-  const [userProfile, setUserProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(null);
   const [games, setGames] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState(EMPTY);
+  const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [editingGame, setEditingGame] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    genre: 'Action',
-    releaseDate: '',
-    fileSize: '',
-    downloadUrl: '',
-    coverImage: '',
-    rating: 0,
-    downloads: 0,
-    type: 'pc',
-    exePath: ''
-  });
-  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
 
-  // Check if admin
+  const loadGames = async () => {
+    const snap = await getDocs(collection(db, 'games'));
+    setGames(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  };
+
   useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          setUserProfile(data);
-          if (data.role !== 'admin') {
-            navigate('/');
-          }
-        }
+    getDoc(doc(db, 'users', auth.currentUser.uid)).then((snap) => {
+      const admin = snap.exists() && snap.data().role === 'admin';
+      setIsAdmin(admin);
+      if (admin) loadGames();
+    });
+  }, []);
 
-        const gamesSnap = await getDocs(collection(db, 'games'));
-        const gamesList = gamesSnap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setGames(gamesList);
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
 
-    checkAdmin();
-  }, [navigate]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'rating' || name === 'downloads' ? parseFloat(value) : value
-    }));
+  const uploadFile = async (file, folder) => {
+    const fileRef = ref(storage, `games/${folder}/${Date.now()}_${file.name}`);
+    await uploadBytes(fileRef, file);
+    return getDownloadURL(fileRef);
   };
 
-  const handleImageUpload = async (file, type) => {
+  const onCover = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setBusy(true);
     try {
-      const fileName = `${Date.now()}_${file.name}`;
-      const fileRef = ref(storage, `games/${type}/${fileName}`);
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-
-      setFormData(prev => ({
-        ...prev,
-        [type === 'cover' ? 'coverImage' : 'screenshots']: type === 'cover' ? url : [...(prev.screenshots || []), url]
-      }));
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert('Error uploading image');
+      const url = await uploadFile(file, 'covers');
+      setForm((f) => ({ ...f, coverImage: url }));
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const onScreenshots = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setBusy(true);
     try {
-      if (editingGame) {
-        const gameRef = doc(db, 'games', editingGame.id);
-        await updateDoc(gameRef, {
-          ...formData,
-          updatedAt: new Date()
-        });
-        alert('✅ Game updated!');
-      } else {
-        await addDoc(collection(db, 'games'), {
-          ...formData,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-        alert('✅ Game added!');
-      }
-
-      setFormData({
-        name: '',
-        description: '',
-        genre: 'Action',
-        releaseDate: '',
-        fileSize: '',
-        downloadUrl: '',
-        coverImage: '',
-        rating: 0,
-        downloads: 0,
-        type: 'pc',
-        exePath: ''
-      });
-      setShowForm(false);
-      setEditingGame(null);
-
-      // Reload games
-      const gamesSnap = await getDocs(collection(db, 'games'));
-      const gamesList = gamesSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setGames(gamesList);
-    } catch (error) {
-      console.error('Error saving game:', error);
-      alert('Error saving game: ' + error.message);
+      const urls = await Promise.all(files.map((file) => uploadFile(file, 'screenshots')));
+      setForm((f) => ({ ...f, screenshots: [...f.screenshots, ...urls] }));
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleEdit = (game) => {
-    setFormData(game);
-    setEditingGame(game);
+  const openNew = () => {
+    setEditingId(null);
+    setForm(EMPTY);
     setShowForm(true);
   };
 
-  const handleDelete = async (gameId) => {
-    if (confirm('Are you sure?')) {
-      try {
-        await deleteDoc(doc(db, 'games', gameId));
-        setGames(games.filter(g => g.id !== gameId));
-        alert('✅ Game deleted!');
-      } catch (error) {
-        console.error('Delete error:', error);
-      }
-    }
+  const openEdit = (game) => {
+    setEditingId(game.id);
+    setForm({ ...EMPTY, ...game });
+    setShowForm(true);
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
+  const save = async (e) => {
+    e.preventDefault();
+    const data = { ...form, rating: Number(form.rating) || 0, downloads: Number(form.downloads) || 0, updatedAt: new Date() };
+    if (editingId) {
+      await updateDoc(doc(db, 'games', editingId), data);
+    } else {
+      await addDoc(collection(db, 'games'), { ...data, createdAt: new Date() });
     }
+    setShowForm(false);
+    setEditingId(null);
+    loadGames();
   };
 
-  if (loading) {
-    return <div className="loading">Loading...</div>;
+  const remove = async (game) => {
+    if (!window.confirm(`Delete "${game.name}"?`)) return;
+    await deleteDoc(doc(db, 'games', game.id));
+    loadGames();
+  };
+
+  if (isAdmin === null) return <div className="screen-center">Loading...</div>;
+
+  if (!isAdmin) {
+    return (
+      <div className="page">
+        <Navbar onLogout={() => signOut(auth)} />
+        <main className="container"><p className="muted">Access denied. This page is for administrators.</p></main>
+      </div>
+    );
   }
 
   return (
-    <div className="admin-page">
-      <Navbar onLogout={handleLogout} />
-
-      <div className="container">
-        <div className="admin-header">
-          <h1>🛡️ Admin Panel</h1>
-          <button className="btn btn-primary" onClick={() => {
-            setShowForm(!showForm);
-            setEditingGame(null);
-            setFormData({
-              name: '',
-              description: '',
-              genre: 'Action',
-              releaseDate: '',
-              fileSize: '',
-              downloadUrl: '',
-              coverImage: '',
-              rating: 0,
-              downloads: 0,
-              type: 'pc',
-              exePath: ''
-            });
-          }}>
-            {showForm ? '✕ Cancel' : '+ Add Game'}
+    <div className="page">
+      <Navbar onLogout={() => signOut(auth)} />
+      <main className="container">
+        <div className="list-item" style={{ padding: 0, marginBottom: 20 }}>
+          <h1 className="page-title" style={{ margin: 0 }}>Admin panel</h1>
+          <button className="btn btn-primary" onClick={() => (showForm ? setShowForm(false) : openNew())}>
+            {showForm ? 'Close' : 'Add game'}
           </button>
         </div>
 
-        {/* Add/Edit Form */}
         {showForm && (
-          <div className="admin-form-container">
-            <h2>{editingGame ? 'Edit Game' : 'Add New Game'}</h2>
-            <form onSubmit={handleSubmit} className="admin-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Game Name *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Genre</label>
-                  <select name="genre" value={formData.genre} onChange={handleInputChange}>
-                    <option>Action</option>
-                    <option>Adventure</option>
-                    <option>RPG</option>
-                    <option>Strategy</option>
-                    <option>Puzzle</option>
-                    <option>Shooter</option>
-                  </select>
-                </div>
-              </div>
+          <form className="card" onSubmit={save} style={{ marginBottom: 24 }}>
+            <h2 className="section-title" style={{ marginTop: 0 }}>{editingId ? 'Edit game' : 'New game'}</h2>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Release Date</label>
-                  <input type="date" name="releaseDate" value={formData.releaseDate} onChange={handleInputChange} />
-                </div>
-                <div className="form-group">
-                  <label>File Size</label>
-                  <input type="text" name="fileSize" placeholder="e.g., 2.5 GB" value={formData.fileSize} onChange={handleInputChange} />
-                </div>
+            <div className="form-row">
+              <div className="field"><label>Name</label><input value={form.name} onChange={set('name')} required /></div>
+              <div className="field"><label>Genre</label>
+                <select value={form.genre} onChange={set('genre')}>
+                  {['Action', 'Adventure', 'RPG', 'Strategy', 'Puzzle', 'Shooter'].map((g) => <option key={g}>{g}</option>)}
+                </select>
               </div>
+            </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Rating (0-10)</label>
-                  <input type="number" name="rating" min="0" max="10" step="0.1" value={formData.rating} onChange={handleInputChange} />
-                </div>
-                <div className="form-group">
-                  <label>Downloads</label>
-                  <input type="number" name="downloads" value={formData.downloads} onChange={handleInputChange} />
-                </div>
+            <div className="field"><label>Description</label><textarea rows={3} value={form.description} onChange={set('description')} /></div>
+
+            <div className="form-row">
+              <div className="field"><label>Release date</label><input type="date" value={form.releaseDate} onChange={set('releaseDate')} /></div>
+              <div className="field"><label>File size</label><input placeholder="e.g. 180 MB" value={form.fileSize} onChange={set('fileSize')} /></div>
+            </div>
+
+            <div className="form-row">
+              <div className="field"><label>Download URL (https://)</label><input value={form.downloadUrl} onChange={set('downloadUrl')} /></div>
+              <div className="field"><label>Platform</label>
+                <select value={form.type} onChange={set('type')}>
+                  <option value="pc">PC</option>
+                  <option value="mobile">Mobile</option>
+                </select>
               </div>
+            </div>
 
-              <div className="form-group">
-                <label>Description *</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows="3"
-                  required
-                />
+            <div className="form-row">
+              <div className="field"><label>Cover image</label><input type="file" accept="image/*" onChange={onCover} />
+                {form.coverImage && <div className="muted" style={{ marginTop: 6 }}>Cover uploaded</div>}
               </div>
-
-              <div className="form-group">
-                <label>Download URL *</label>
-                <input
-                  type="url"
-                  name="downloadUrl"
-                  value={formData.downloadUrl}
-                  onChange={handleInputChange}
-                  required
-                />
+              <div className="field"><label>Screenshots</label><input type="file" accept="image/*" multiple onChange={onScreenshots} />
+                <div className="muted" style={{ marginTop: 6 }}>{form.screenshots.length} uploaded</div>
               </div>
+            </div>
 
-              <div className="form-group">
-                <label>EXE Path (for launcher)</label>
-                <input type="text" name="exePath" placeholder="games/pc/game.exe" value={formData.exePath} onChange={handleInputChange} />
-              </div>
-
-              <div className="form-group">
-                <label>Cover Image</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => e.target.files[0] && handleImageUpload(e.target.files[0], 'cover')}
-                />
-                {formData.coverImage && <p>✅ Image uploaded</p>}
-              </div>
-
-              <button type="submit" className="btn btn-primary btn-block">
-                {editingGame ? 'Update Game' : 'Add Game'}
-              </button>
-            </form>
-          </div>
+            <button className="btn btn-primary" type="submit" disabled={busy}>
+              {busy ? 'Uploading...' : editingId ? 'Save changes' : 'Create game'}
+            </button>
+          </form>
         )}
 
-        {/* Games List */}
-        <div className="admin-games">
-          <h2>Games ({games.length})</h2>
-          <div className="games-table">
-            {games.length > 0 ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Genre</th>
-                    <th>Type</th>
-                    <th>Rating</th>
-                    <th>Downloads</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {games.map(game => (
-                    <tr key={game.id}>
-                      <td>{game.name}</td>
-                      <td>{game.genre}</td>
-                      <td>{game.type}</td>
-                      <td>⭐ {game.rating}</td>
-                      <td>📥 {game.downloads}</td>
-                      <td>
-                        <button className="btn-sm edit" onClick={() => handleEdit(game)}>✏️</button>
-                        <button className="btn-sm delete" onClick={() => handleDelete(game.id)}>🗑️</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="no-games">No games yet</p>
-            )}
-          </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Genre</th><th>Platform</th><th>Size</th><th></th></tr>
+            </thead>
+            <tbody>
+              {games.length === 0 && <tr><td colSpan={5} className="muted">No games yet.</td></tr>}
+              {games.map((g) => (
+                <tr key={g.id}>
+                  <td>{g.name}</td>
+                  <td>{g.genre}</td>
+                  <td>{(g.type || '').toUpperCase()}</td>
+                  <td>{g.fileSize || '—'}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button className="btn btn-sm" onClick={() => openEdit(g)}>Edit</button>{' '}
+                    <button className="btn btn-sm btn-danger" onClick={() => remove(g)}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -58,3 +58,9 @@ coverage/
 *.tmp
 *.bak
 *.backup
+
+# Build output
+release/
+dist-app/
+dist-exe/
+out-final/

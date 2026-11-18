@@ -2,108 +2,68 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import './Navbar.css';
+import Avatar from './Avatar';
+
+const LINKS = [
+  { to: '/', label: 'Home' },
+  { to: '/games', label: 'Games' },
+  { to: '/friends', label: 'Friends' },
+];
 
 function Navbar({ onLogout }) {
-  const [userProfile, setUserProfile] = useState(null);
-  const [showMenu, setShowMenu] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          setUserProfile(userSnap.data());
-        }
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-      }
-    };
-
-    if (auth.currentUser) {
-      fetchUserProfile();
-    }
+    if (!auth.currentUser) return;
+    getDoc(doc(db, 'users', auth.currentUser.uid))
+      .then((snap) => snap.exists() && setProfile(snap.data()))
+      .catch((err) => console.error('Error fetching user profile:', err));
   }, []);
 
-  const isActive = (path) => location.pathname === path ? 'active' : '';
-
-  const handleNavClick = (path) => {
+  const go = (path) => {
     navigate(path);
-    setShowMenu(false);
+    setOpen(false);
   };
 
   return (
-    <nav className="navbar">
-      <div className="nav-left">
-        <div className="logo" onClick={() => handleNavClick('/')}>
-          <span className="logo-icon">🎮</span>
-          <span className="logo-text">WazalGames</span>
-        </div>
-      </div>
+    <header className="navbar">
+      <div className="brand" onClick={() => go('/')}>WazalGames Center</div>
 
-      <div className={`nav-links ${showMenu ? 'active' : ''}`}>
-        <a className={`nav-link ${isActive('/')}`} onClick={() => handleNavClick('/')}>
-          Home
-        </a>
-        <a className={`nav-link ${isActive('/games')}`} onClick={() => handleNavClick('/games')}>
-          Games
-        </a>
-        <a className={`nav-link ${isActive('/friends')}`} onClick={() => handleNavClick('/friends')}>
-          Friends
-        </a>
-      </div>
+      <nav className="nav-links">
+        {LINKS.map((link) => (
+          <button
+            key={link.to}
+            className={`nav-link ${location.pathname === link.to ? 'active' : ''}`}
+            onClick={() => go(link.to)}
+          >
+            {link.label}
+          </button>
+        ))}
+      </nav>
 
-      <div className="nav-right">
-        <div className="user-menu">
-          <img
-            src={userProfile?.avatar || 'https://via.placeholder.com/150?text=Avatar'}
-            alt="Avatar"
-            className="avatar"
-            onClick={() => setShowMenu(!showMenu)}
-          />
+      <div className="user-menu">
+        <button className="avatar-btn" onClick={() => setOpen(!open)} aria-label="Account menu">
+          <Avatar src={profile?.avatar} name={profile?.username} size={32} />
+        </button>
 
-          {showMenu && (
-            <div className="dropdown-menu">
-              <div className="user-info">
-                <img src={userProfile?.avatar || 'https://via.placeholder.com/150?text=Avatar'} alt="Avatar" />
-                <div>
-                  <p className="username">{userProfile?.username || 'Player'}</p>
-                  <p className="email">{auth.currentUser?.email}</p>
-                </div>
-              </div>
-
-              <div className="dropdown-divider"></div>
-
-              <button className="dropdown-item" onClick={() => handleNavClick('/profile')}>
-                👤 Profile
-              </button>
-              <button className="dropdown-item" onClick={() => handleNavClick('/games')}>
-                🎮 My Games
-              </button>
-              <button className="dropdown-item" onClick={() => handleNavClick('/friends')}>
-                👥 Friends
-              </button>
-
-              <div className="dropdown-divider"></div>
-
-              <button className="dropdown-item logout" onClick={() => {
-                setShowMenu(false);
-                onLogout();
-              }}>
-                🚪 Sign Out
-              </button>
+        {open && (
+          <div className="dropdown">
+            <div className="dropdown-head">
+              <strong>{profile?.username || 'Player'}</strong>
+              <span>{auth.currentUser?.email}</span>
             </div>
-          )}
-        </div>
+            <button onClick={() => go('/profile')}>Profile</button>
+            <button onClick={() => go('/games')}>Library</button>
+            <button onClick={() => go('/friends')}>Friends</button>
+            {profile?.role === 'admin' && <button onClick={() => go('/admin')}>Admin panel</button>}
+            <button className="danger" onClick={() => { setOpen(false); onLogout(); }}>Sign out</button>
+          </div>
+        )}
       </div>
-
-      <button className="mobile-menu-btn" onClick={() => setShowMenu(!showMenu)}>
-        ☰
-      </button>
-    </nav>
+    </header>
   );
 }
 

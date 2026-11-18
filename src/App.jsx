@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './services/firebase';
-import './App.css';
 
-// Pages
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import GamesPage from './pages/GamesPage';
@@ -23,18 +21,11 @@ function App() {
       setUser(currentUser);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <div className="logo">🎮</div>
-        <h1>WazalGames Center</h1>
-        <p>Loading...</p>
-      </div>
-    );
+    return <div className="screen-center">Loading...</div>;
   }
 
   return (

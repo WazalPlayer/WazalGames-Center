@@ -1,123 +1,85 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import './FriendsPage.css';
+import Avatar from '../components/Avatar';
 
 function FriendsPage() {
   const [friends, setFriends] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchFriends = async () => {
+    const load = async () => {
       try {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const friendIds = userSnap.data().friends || [];
+        const me = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        const friendIds = me.exists() ? me.data().friends || [] : [];
 
-          if (friendIds.length > 0) {
-            const friendsList = [];
-            for (const friendId of friendIds) {
-              const friendRef = doc(db, 'users', friendId);
-              const friendSnap = await getDoc(friendRef);
-              if (friendSnap.exists()) {
-                friendsList.push({
-                  id: friendId,
-                  ...friendSnap.data()
-                });
-              }
-            }
-            setFriends(friendsList);
-          }
-        }
+        const friendDocs = await Promise.all(friendIds.map((id) => getDoc(doc(db, 'users', id))));
+        setFriends(friendDocs.filter((d) => d.exists()).map((d) => ({ id: d.id, ...d.data() })));
 
-        // Fetch all users for adding new friends
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const usersList = usersSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(u => u.id !== auth.currentUser.uid);
-        setAllUsers(usersList);
-      } catch (error) {
-        console.error('Error fetching friends:', error);
+        const all = await getDocs(collection(db, 'users'));
+        setUsers(
+          all.docs
+            .filter((d) => d.id !== auth.currentUser.uid && !friendIds.includes(d.id))
+            .map((d) => ({ id: d.id, ...d.data() })),
+        );
+      } catch (err) {
+        console.error('Error loading friends:', err);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchFriends();
+    load();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  if (loading) {
-    return <div className="loading">Loading friends...</div>;
-  }
+  if (loading) return <div className="screen-center">Loading...</div>;
 
   return (
-    <div className="friends-page">
-      <Navbar onLogout={handleLogout} />
+    <div className="page">
+      <Navbar onLogout={() => signOut(auth)} />
+      <main className="container">
+        <h1 className="page-title">Friends</h1>
 
-      <div className="container">
-        <h1>Friends 👥</h1>
-
-        <div className="friends-container">
-          {/* Friends List */}
-          <section className="friends-list">
-            <h2>My Friends ({friends.length})</h2>
-            <div className="friends-grid">
-              {friends.length > 0 ? (
-                friends.map(friend => (
-                  <div key={friend.id} className="friend-card">
-                    <img src={friend.avatar} alt={friend.username} />
-                    <h3>{friend.username}</h3>
-                    <p>{friend.stats?.gamesPlayed || 0} games played</p>
-                    <button
-                      className="btn btn-sm"
-                      onClick={() => navigate(`/chat/${friend.id}`)}
-                    >
-                      Message
-                    </button>
+        <div className="two-col">
+          <section>
+            <h2 className="section-title" style={{ marginTop: 0 }}>Your friends ({friends.length})</h2>
+            <div className="card">
+              {friends.length === 0 && <p className="muted">You have no friends yet.</p>}
+              {friends.map((f) => (
+                <div key={f.id} className="list-item">
+                  <div className="person">
+                    <Avatar src={f.avatar} name={f.username} />
+                    <div>
+                      <strong>{f.username}</strong>
+                      <div className="muted">{f.stats?.gamesPlayed || 0} games played</div>
+                    </div>
                   </div>
-                ))
-              ) : (
-                <p className="no-friends">No friends yet. Add some friends!</p>
-              )}
+                  <button className="btn btn-sm" onClick={() => navigate(`/chat/${f.id}`)}>Message</button>
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* Add Friends */}
-          <section className="add-friends">
-            <h2>Add Friends</h2>
-            <div className="friends-grid">
-              {allUsers
-                .filter(user => !friends.find(f => f.id === user.id))
-                .slice(0, 6)
-                .map(user => (
-                  <div key={user.id} className="friend-card">
-                    <img src={user.avatar} alt={user.username} />
-                    <h3>{user.username}</h3>
-                    <p>{user.stats?.gamesPlayed || 0} games played</p>
-                    <button className="btn btn-primary btn-sm">
-                      Add Friend
-                    </button>
+          <section>
+            <h2 className="section-title" style={{ marginTop: 0 }}>Players</h2>
+            <div className="card">
+              {users.length === 0 && <p className="muted">No other players yet.</p>}
+              {users.slice(0, 20).map((u) => (
+                <div key={u.id} className="list-item">
+                  <div className="person">
+                    <Avatar src={u.avatar} name={u.username} />
+                    <strong>{u.username}</strong>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
           </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

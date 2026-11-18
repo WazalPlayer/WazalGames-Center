@@ -4,15 +4,14 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getDatabase } from 'firebase/database';
 
-// ВАЖНО: Замени эти значения на реальные из Firebase Console
-// https://console.firebase.google.com
+// WazalGames Center - Firebase Configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAhAiaTCirDG_aA1mweGIgHfStX6IBIRtw",
+  authDomain: "wazalgames-center.firebaseapp.com",
+  projectId: "wazalgames-center",
+  storageBucket: "wazalgames-center.firebasestorage.app",
+  messagingSenderId: "846628518934",
+  appId: "1:846628518934:web:8f3d9e198adcd079474937"
 };
 
 // Initialize Firebase

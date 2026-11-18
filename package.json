@@ -2,73 +2,54 @@
   "name": "wazalgames-center",
   "version": "1.0.0",
   "description": "WazalGames Center - Game Distribution Platform",
-  "type": "module",
-  "main": "electron.js",
-  "homepage": "./",
+  "private": true,
+  "main": "main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron-build": "npm run build && electron-builder",
-    "upload-game": "node scripts/upload-game.js",
-    "update-games": "node scripts/update-games.js",
-    "sync-github": "node scripts/sync-github.js",
+    "electron": "electron .",
+    "electron-dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dist:exe": "vite build && electron-builder --win portable",
     "load-local-games": "node scripts/load-local-games.js"
   },
   "dependencies": {
+    "axios": "^1.6.0",
+    "firebase": "^10.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "firebase": "^10.7.0",
-    "axios": "^1.6.0",
     "react-router-dom": "^6.20.0",
     "zustand": "^4.4.0"
   },
   "devDependencies": {
-    "vite": "^5.0.0",
     "@vitejs/plugin-react": "^4.2.0",
-    "electron": "^latest",
-    "electron-builder": "^latest",
-    "electron-is-dev": "^latest",
-    "concurrently": "^latest",
-    "wait-on": "^latest"
+    "concurrently": "^8.2.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.0",
+    "vite": "^5.0.0",
+    "wait-on": "^7.0.0"
   },
   "build": {
     "appId": "com.wazalgames.center",
-    "productName": "WazalGames Center",
+    "productName": "WazalGamesCenter",
+    "directories": {
+      "output": "dist-app"
+    },
     "files": [
       "dist/**/*",
-      "electron.js",
-      "preload.js",
-      "games/**/*",
+      "main.cjs",
+      "preload.cjs",
       "package.json"
     ],
     "win": {
+      "signAndEditExecutable": false,
+      "artifactName": "WazalGamesCenter.exe",
       "target": [
         {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
           "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
-      ],
-      "icon": "assets/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      ]
     }
-  }
-  "devDependencies": {
-    "vite": "^5.0.0",
-    "@vitejs/plugin-react": "^4.2.0"
   }
 }
