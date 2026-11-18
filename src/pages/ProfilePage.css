@@ -1,0 +1,125 @@
+.profile-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+  color: #f1f5f9;
+}
+
+.profile-page h1 {
+  font-size: 36px;
+  margin-bottom: 2rem;
+}
+
+.profile-container {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 20px;
+  padding: 2rem;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.profile-avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #6366f1;
+}
+
+.profile-info h2 {
+  font-size: 28px;
+  margin-bottom: 0.5rem;
+}
+
+.profile-info p {
+  color: #cbd5e1;
+  margin: 0.5rem 0;
+}
+
+.bio {
+  font-style: italic;
+  color: #64748b;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 12px;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat strong {
+  display: block;
+  font-size: 24px;
+  color: #6366f1;
+  margin-bottom: 0.5rem;
+}
+
+.stat span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.game-accounts {
+  margin-bottom: 2rem;
+}
+
+.game-accounts h3 {
+  font-size: 20px;
+  margin-bottom: 1rem;
+}
+
+.accounts-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-item {
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.account-item h4 {
+  margin-bottom: 0.5rem;
+}
+
+.account-item p {
+  color: #cbd5e1;
+  font-size: 14px;
+  margin: 0.5rem 0;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+@media (max-width: 768px) {
+  .profile-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profile-stats {
+    grid-template-columns: 1fr;
+  }
+}

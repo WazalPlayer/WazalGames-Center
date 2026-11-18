@@ -1,0 +1,1 @@
+{"rules": {"chats": {".read": "auth != null", ".write": "auth != null"}, "userStatus": {".read": "auth != null", ".write": "auth != null"}}}
