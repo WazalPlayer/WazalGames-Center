@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 
 const isDev = !app.isPackaged;
+const SITE_URL = 'https://wazalgames-center.web.app';
 let mainWindow;
 
 function createWindow() {
@@ -21,11 +22,7 @@ function createWindow() {
 
   Menu.setApplicationMenu(null);
 
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
-  } else {
-    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
-  }
+  mainWindow.loadURL(isDev ? 'http://localhost:5173' : SITE_URL);
 
   mainWindow.on('closed', () => {
     mainWindow = null;

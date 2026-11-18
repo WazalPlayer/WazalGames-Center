@@ -7,6 +7,8 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { Gamepad2, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { errorMessage } from '../services/errors';
 
 const emptyProfile = (username) => ({
   username,
@@ -42,7 +44,7 @@ function LoginPage() {
         });
       }
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ function LoginPage() {
         { merge: true },
       );
     } catch (err) {
-      setError(err.message);
+      setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -73,12 +75,15 @@ function LoginPage() {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>WazalGames Center</h1>
-        <p className="sub">Sign in to download and play your games</p>
+        <div className="login-brand">
+          <Gamepad2 size={28} />
+          <h1>WazalGames Center</h1>
+        </div>
+        <p className="sub">Войдите, чтобы скачивать и запускать игры</p>
 
         <div className="segmented">
-          <button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>Sign in</button>
-          <button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>Create account</button>
+          <button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>Вход</button>
+          <button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>Регистрация</button>
         </div>
 
         {error && <div className="error">{error}</div>}
@@ -86,21 +91,28 @@ function LoginPage() {
         <form onSubmit={handleEmail}>
           <div className="field">
             <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <div className="input-icon">
+              <Mail size={16} />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
           </div>
           <div className="field">
-            <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
+            <label>Пароль</label>
+            <div className="input-icon">
+              <Lock size={16} />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
+            </div>
           </div>
           <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Please wait...' : mode === 'signin' ? 'Sign in' : 'Create account'}
+            {mode === 'signin' ? <LogIn size={16} /> : <UserPlus size={16} />}
+            {loading ? 'Подождите...' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
           </button>
         </form>
 
-        <div className="divider">or</div>
+        <div className="divider">или</div>
 
         <button className="btn btn-block" onClick={handleGoogle} disabled={loading}>
-          Continue with Google
+          Войти через Google
         </button>
       </div>
     </div>

@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { MessageCircle, Users, UserRound } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar';
 
 function FriendsPage() {
   const [friends, setFriends] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -22,13 +23,13 @@ function FriendsPage() {
         setFriends(friendDocs.filter((d) => d.exists()).map((d) => ({ id: d.id, ...d.data() })));
 
         const all = await getDocs(collection(db, 'users'));
-        setUsers(
+        setPlayers(
           all.docs
             .filter((d) => d.id !== auth.currentUser.uid && !friendIds.includes(d.id))
             .map((d) => ({ id: d.id, ...d.data() })),
         );
       } catch (err) {
-        console.error('Error loading friends:', err);
+        console.error('Ошибка загрузки друзей:', err);
       } finally {
         setLoading(false);
       }
@@ -36,39 +37,45 @@ function FriendsPage() {
     load();
   }, []);
 
-  if (loading) return <div className="screen-center">Loading...</div>;
+  if (loading) return <div className="screen-center">Загрузка...</div>;
 
   return (
     <div className="page">
       <Navbar onLogout={() => signOut(auth)} />
       <main className="container">
-        <h1 className="page-title">Friends</h1>
+        <h1 className="page-title">Друзья</h1>
 
         <div className="two-col">
           <section>
-            <h2 className="section-title" style={{ marginTop: 0 }}>Your friends ({friends.length})</h2>
+            <h2 className="section-title" style={{ marginTop: 0 }}>
+              <Users size={16} /> Мои друзья ({friends.length})
+            </h2>
             <div className="card">
-              {friends.length === 0 && <p className="muted">You have no friends yet.</p>}
+              {friends.length === 0 && <p className="muted">У вас пока нет друзей.</p>}
               {friends.map((f) => (
                 <div key={f.id} className="list-item">
                   <div className="person">
                     <Avatar src={f.avatar} name={f.username} />
                     <div>
                       <strong>{f.username}</strong>
-                      <div className="muted">{f.stats?.gamesPlayed || 0} games played</div>
+                      <div className="muted">Сыграно игр: {f.stats?.gamesPlayed || 0}</div>
                     </div>
                   </div>
-                  <button className="btn btn-sm" onClick={() => navigate(`/chat/${f.id}`)}>Message</button>
+                  <button className="btn btn-sm" onClick={() => navigate(`/chat/${f.id}`)}>
+                    <MessageCircle size={14} /> Написать
+                  </button>
                 </div>
               ))}
             </div>
           </section>
 
           <section>
-            <h2 className="section-title" style={{ marginTop: 0 }}>Players</h2>
+            <h2 className="section-title" style={{ marginTop: 0 }}>
+              <UserRound size={16} /> Игроки
+            </h2>
             <div className="card">
-              {users.length === 0 && <p className="muted">No other players yet.</p>}
-              {users.slice(0, 20).map((u) => (
+              {players.length === 0 && <p className="muted">Других игроков пока нет.</p>}
+              {players.slice(0, 20).map((u) => (
                 <div key={u.id} className="list-item">
                   <div className="person">
                     <Avatar src={u.avatar} name={u.username} />

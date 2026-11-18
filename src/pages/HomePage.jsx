@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
 import { doc, getDoc, collection, query, limit, getDocs } from 'firebase/firestore';
+import { Download, Gamepad2, Clock, Users } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { genreName } from '../services/labels';
 
 function HomePage() {
   const [profile, setProfile] = useState(null);
@@ -20,7 +22,7 @@ function HomePage() {
         const gamesSnap = await getDocs(query(collection(db, 'games'), limit(6)));
         setGames(gamesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       } catch (err) {
-        console.error('Error loading home page:', err);
+        console.error('Ошибка загрузки главной страницы:', err);
       } finally {
         setLoading(false);
       }
@@ -28,36 +30,50 @@ function HomePage() {
     load();
   }, []);
 
-  const handleLogout = () => signOut(auth);
-
-  if (loading) return <div className="screen-center">Loading...</div>;
+  if (loading) return <div className="screen-center">Загрузка...</div>;
 
   const stats = profile?.stats || {};
 
   return (
     <div className="page">
-      <Navbar onLogout={handleLogout} />
+      <Navbar onLogout={() => signOut(auth)} />
       <main className="container">
-        <h1 className="page-title">Welcome, {profile?.username || 'player'}</h1>
+        <h1 className="page-title">Добро пожаловать, {profile?.username || 'игрок'}</h1>
 
         <section className="stats">
-          <div className="stat"><div className="value">{stats.gamesDownloaded || 0}</div><div className="label">Games downloaded</div></div>
-          <div className="stat"><div className="value">{stats.gamesPlayed || 0}</div><div className="label">Games played</div></div>
-          <div className="stat"><div className="value">{Math.round((stats.playtime || 0) / 60)} h</div><div className="label">Playtime</div></div>
-          <div className="stat"><div className="value">{profile?.friends?.length || 0}</div><div className="label">Friends</div></div>
+          <div className="stat">
+            <Download size={18} className="stat-icon" />
+            <div className="value">{stats.gamesDownloaded || 0}</div>
+            <div className="label">Скачано игр</div>
+          </div>
+          <div className="stat">
+            <Gamepad2 size={18} className="stat-icon" />
+            <div className="value">{stats.gamesPlayed || 0}</div>
+            <div className="label">Сыграно игр</div>
+          </div>
+          <div className="stat">
+            <Clock size={18} className="stat-icon" />
+            <div className="value">{Math.round((stats.playtime || 0) / 60)} ч</div>
+            <div className="label">Время в играх</div>
+          </div>
+          <div className="stat">
+            <Users size={18} className="stat-icon" />
+            <div className="value">{profile?.friends?.length || 0}</div>
+            <div className="label">Друзья</div>
+          </div>
         </section>
 
-        <h2 className="section-title">Games</h2>
+        <h2 className="section-title">Игры</h2>
         {games.length === 0 ? (
-          <p className="muted">No games yet.</p>
+          <p className="muted">Игр пока нет.</p>
         ) : (
           <div className="grid">
             {games.map((game) => (
               <div key={game.id} className="game-card" onClick={() => navigate(`/game/${game.id}`)}>
-                {game.coverImage ? <img className="cover" src={game.coverImage} alt={game.name} /> : <div className="cover" />}
+                {game.coverImage ? <img className="cover" src={game.coverImage} alt={game.name} /> : <div className="cover cover-empty"><Gamepad2 size={32} /></div>}
                 <div className="body">
                   <h3>{game.name}</h3>
-                  <div className="meta">{game.genre} · {game.fileSize || '—'}</div>
+                  <div className="meta">{genreName(game.genre)} · {game.fileSize || '—'}</div>
                 </div>
               </div>
             ))}

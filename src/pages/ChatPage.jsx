@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth';
 import { auth, db, realtimeDb } from '../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { ref, push, onValue } from 'firebase/database';
+import { ArrowLeft, Send } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar';
 
@@ -50,20 +51,20 @@ function ChatPage() {
     <div className="page">
       <Navbar onLogout={() => signOut(auth)} />
       <div className="chat">
-        <div className="list-item" style={{ padding: '14px 24px' }}>
-          <div className="person">
-            <button className="back" style={{ margin: 0 }} onClick={() => navigate('/friends')}>← Back</button>
-            {friend && (
-              <>
-                <Avatar src={friend.avatar} name={friend.username} />
-                <strong>{friend.username}</strong>
-              </>
-            )}
-          </div>
+        <div className="chat-head">
+          <button className="back" style={{ margin: 0 }} onClick={() => navigate('/friends')}>
+            <ArrowLeft size={16} /> Назад
+          </button>
+          {friend && (
+            <div className="person">
+              <Avatar src={friend.avatar} name={friend.username} />
+              <strong>{friend.username}</strong>
+            </div>
+          )}
         </div>
 
         <div className="chat-log" ref={logRef}>
-          {messages.length === 0 && <p className="muted">No messages yet.</p>}
+          {messages.length === 0 && <p className="muted">Сообщений пока нет.</p>}
           {messages.map((m) => (
             <div key={m.id} className={`bubble ${m.sender === auth.currentUser.uid ? 'mine' : ''}`}>
               {m.text}
@@ -72,8 +73,8 @@ function ChatPage() {
         </div>
 
         <form className="chat-form" onSubmit={send}>
-          <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Message" />
-          <button className="btn btn-primary" type="submit">Send</button>
+          <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Сообщение" />
+          <button className="btn btn-primary" type="submit"><Send size={16} /> Отправить</button>
         </form>
       </div>
     </div>

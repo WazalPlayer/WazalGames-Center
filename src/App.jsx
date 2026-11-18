@@ -25,7 +25,7 @@ function App() {
   }, []);
 
   if (loading) {
-    return <div className="screen-center">Loading...</div>;
+    return <div className="screen-center">Загрузка...</div>;
   }
 
   return (
