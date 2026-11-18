@@ -34,7 +34,7 @@
     "appId": "com.wazalgames.center",
     "productName": "WazalGamesCenter",
     "directories": {
-      "output": "dist-v3"
+      "output": "dist-v4"
     },
     "files": [
       "main.cjs",

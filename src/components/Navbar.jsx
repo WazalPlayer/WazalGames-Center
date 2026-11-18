@@ -4,6 +4,7 @@ import { auth, db } from '../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Home, Gamepad2, Users, User, Library, Shield, LogOut } from 'lucide-react';
 import Avatar from './Avatar';
+import { isAdminUser } from '../services/admin';
 
 const LINKS = [
   { to: '/', label: 'Главная', Icon: Home },
@@ -63,7 +64,7 @@ function Navbar({ onLogout }) {
             <button onClick={() => go('/profile')}><User size={16} /> Профиль</button>
             <button onClick={() => go('/games')}><Library size={16} /> Библиотека</button>
             <button onClick={() => go('/friends')}><Users size={16} /> Друзья</button>
-            {profile?.role === 'admin' && (
+            {isAdminUser(auth.currentUser, profile) && (
               <button onClick={() => go('/admin')}><Shield size={16} /> Админ-панель</button>
             )}
             <button className="danger" onClick={() => { setOpen(false); onLogout(); }}>
